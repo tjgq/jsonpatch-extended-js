@@ -127,9 +127,10 @@
     class JSONPointer
         constructor: (path) ->
             steps = []
-            # If a path is specified, it must start with a /
+
+            # A path must either be empty or start with /
             if path and (steps = path.split '/').shift() isnt ''
-                throw new InvalidPointerError()
+                throw new InvalidPointerError('Path must be empty or start with /')
 
             # Decode each component, decode JSON Pointer specific syntax ~0 and ~1
             for step, i in steps
@@ -177,7 +178,7 @@
         constructor: (patch) ->
             # All patches required a 'path' member
             if 'path' not of patch
-                throw new InvalidPatchError()
+                throw new InvalidPatchError('Missing path')
 
             # Validates the patch based on the requirements of this operation
             @validate(patch)
@@ -196,7 +197,7 @@
 
     class AddPatch extends JSONPatch
         validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError()
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         apply: (document) ->
             reference = @path.getReference(document)
@@ -234,7 +235,7 @@
 
     class ReplacePatch extends JSONPatch
         validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError()
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         apply: (document) ->
             reference = @path.getReference(document)
@@ -255,7 +256,7 @@
 
     class TestPatch extends JSONPatch
         validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError()
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         apply: (document) ->
             reference = @path.getReference(document)
@@ -287,7 +288,7 @@
                     @apply = (document) -> document
 
         validate: (patch) ->
-            if 'from' not of patch then throw new InvalidPatchError()
+            if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
         apply: (document) ->
             reference = @from.getReference(document)
@@ -368,8 +369,9 @@
 
         for p in patch
             # Not a valid operation
+            if not p.op then throw new InvalidPatchError('Missing operation')
             if not (klass = operationMap[p.op])
-                throw new InvalidPatchError()
+                throw new InvalidPatchError('Invalid operation')
             ops.push new klass(p)
 
         return (document) ->
