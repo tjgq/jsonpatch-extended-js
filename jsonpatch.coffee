@@ -143,13 +143,19 @@
 
         # Returns an object with the object reference and the accessor
         getReference: (parent) ->
-            for step in @steps
-                if isArray parent then step = parseInt(step, 10)
-                if step not of parent
-                    throw new PatchConflictError('Array location out of '
-                        'bounds or not an instance property')
-                parent = parent[step]
-            return parent
+            ref = @findReference parent, 0
+            if ref is null
+                throw new PatchConflictError('Array location out of ' +
+                    'bounds or not an instance property')
+            return ref
+
+        findReference: (parent, level) ->
+            step = @steps[level]
+            return parent if step is undefined
+            if isArray parent then step = parseInt(step, 10)
+            if step not of parent
+                return null
+            return @findReference parent[step], level + 1
 
         # Checks and coerces the accessor relative to the reference
         # object it will be applied to.
