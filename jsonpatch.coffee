@@ -315,8 +315,6 @@
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
             else
-                if accessor of reference
-                    throw new PatchConflictError("Value at #{accessor} exists")
                 reference[accessor] = value
             return document
 
@@ -346,8 +344,6 @@
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
             else
-                if accessor of reference
-                    throw new PatchConflictError("Value at #{accessor} exists")
                 reference[accessor] = value
             return document
 
