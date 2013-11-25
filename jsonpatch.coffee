@@ -128,7 +128,8 @@
         constructor: (path) ->
             steps = []
 
-            # A path must either be empty or start with /
+            # A path must either be empty or start with /.
+            # An empty path refers to the document root.
             if path and (steps = path.split '/').shift() isnt ''
                 throw new InvalidPointerError('Path must be empty or start with /')
 
@@ -280,21 +281,24 @@
     class MovePatch extends JSONPatch
         initialize: (patch) ->
             @from = new JSONPointer(patch.from)
-            len = @from.steps.length
 
-            within = true
-            for i in [0..len]
+            # Check whether @from is a proper prefix of @path.
+            # Don't forget that the last component of @from is its accessor.
+            isPrefix = true
+            for i in [0...@from.steps.length]
                 if @from.steps[i] isnt @path.steps[i]
-                    within = false
+                    isPrefix = false
                     break
+            isPrefix = false if @from.accessor isnt @path.steps[@from.steps.length]
+            isPrefix = false if @from.path == '' and @path.path == '' # moving root into root
 
-            if within
-                if @path.steps.length isnt len
-                    throw new InvalidPatchError("'to' member cannot be a descendent of 'path'")
-                if @from.accessor is @path.accessor
-                    # The path and to pointers reference the same location,
-                    # therefore apply can be a no-op
-                    @apply = (document) -> document
+            if isPrefix
+                throw new InvalidPatchError("Cannot move into ancestor")
+
+            if @from.accessor is @path.accessor
+                # The path and to pointers reference the same location,
+                # therefore apply can be a no-op
+                @apply = (document) -> document
 
         validate: (patch) ->
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
