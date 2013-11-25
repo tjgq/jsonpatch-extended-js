@@ -204,13 +204,13 @@
             accessor = @path.accessor
             value = @patch.value
 
-            if isArray(reference)
+            if not accessor?
+                document = value
+            else if isArray(reference)
                 accessor = @path.coerce(reference, accessor)
                 if accessor < 0 or accessor > reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
-            else if not accessor?
-                document = value
             else
                 reference[accessor] = value
             return document
@@ -242,7 +242,9 @@
             accessor = @path.accessor
             value = @patch.value
 
-            if isArray(reference)
+            if not accessor?
+                document = value
+            else if isArray(reference)
                 accessor = @path.coerce(reference, accessor)
                 if accessor not of reference
                     throw new PatchConflictError("Value at #{accessor} does not exist")
@@ -263,6 +265,8 @@
             accessor = @path.accessor
             value = @patch.value
 
+            if not accessor?
+                return isEqual(document, value)
             if isArray(reference)
                 accessor = @path.coerce(reference, accessor)
             return isEqual(reference[accessor], value)
@@ -309,7 +313,9 @@
             accessor = @path.accessor
 
             # Add to object
-            if isArray(reference)
+            if not accessor?
+                document = value
+            else if isArray(reference)
                 accessor = @path.coerce(reference, accessor)
                 if accessor < 0 or accessor > reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
@@ -318,7 +324,7 @@
                 reference[accessor] = value
             return document
 
-    
+
     class CopyPatch extends MovePatch
         apply: (document) ->
             reference = @from.getReference(document)
@@ -338,7 +344,9 @@
             accessor = @path.accessor
 
             # Add to object
-            if isArray(reference)
+            if not accessor?
+                document = value
+            else if isArray(reference)
                 accessor = @path.coerce(reference, accessor)
                 if accessor < 0 or accessor > reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
