@@ -28,10 +28,6 @@
         constructor: (@message='JSON patch error') ->
             @name = 'JSONPatchError'
 
-    class InvalidPointerError extends Error
-        constructor: (@message='Invalid pointer') ->
-            @name = 'InvalidPointer'
-
     class InvalidPatchError extends JSONPatchError
         constructor: (@message='Invalid patch') ->
             @name = 'InvalidPatch'
@@ -315,7 +311,6 @@
     root.JSONPointer = JSONPointer
     root.JSONPatch = JSONPatch
     root.JSONPatchError = JSONPatchError
-    root.InvalidPointerError = InvalidPointerError
     root.InvalidPatchError = InvalidPatchError
     root.PatchConflictError = PatchConflictError
 
