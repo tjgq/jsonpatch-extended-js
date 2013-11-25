@@ -4,12 +4,8 @@
 
 ((root, factory) ->
     if typeof exports isnt 'undefined'
-        # Node/CommonJS
+        # NodeJS
         factory(root, exports)
-    else if typeof define is 'function' and define.amd
-        # AMD
-        define ['exports'], (exports) ->
-            root.jsonpatch = factory(root, exports)
     else
         # Browser globals
         root.jsonpatch = factory(root, {})
