@@ -61,13 +61,10 @@
             @steps = steps
             @path = path
 
-        # Returns the sub-object of parent pointed to by @steps.
+        # Returns the sub-object of parent pointed to by @steps,
+        # or null if not found.
         getReference: (parent) ->
-            ref = @findReference parent, 0
-            if ref is null
-                throw new PatchConflictError('Array location out of ' +
-                    'bounds or not an instance property')
-            return ref
+            return @findReference parent, 0
 
         findReference: (parent, level) ->
             step = @steps[level]
@@ -77,7 +74,8 @@
                 return null
             return @findReference parent[step], level + 1
 
-        # Returns the @accessor coerced relative to the reference object type.
+        # Returns the @accessor coerced relative to the reference object type,
+        # or null if coercion fails.
         getAccessor: (reference) ->
             accessor = @accessor
             if isArray(reference)
@@ -87,7 +85,10 @@
                     else if /^\d+$/.test(accessor)
                         accessor = parseInt(accessor, 10)
                     else
-                        throw new InvalidPointerError('Invalid array index number')
+                        # Hack: return -1 so that array indexing will fail.
+                        # Returning null/undefined would be interpreted as a
+                        # reference to the root document.
+                        return -1
             return accessor
 
 
@@ -118,6 +119,8 @@
     class SourceRefPatch extends JSONPatch
         applyInPlace: (document) ->
             reference = @path.getReference(document)
+            unless reference?
+                throw new PatchConflictError("Source path not found")
             accessor = @path.getAccessor(reference)
             value = @patch.value
             return @realApply(document, reference, accessor, value)
@@ -126,6 +129,8 @@
     class TargetRefPatch extends JSONPatch
         applyInPlace: (document) ->
             reference = @path.getReference(document)
+            unless reference?
+                throw new PatchConflictError("Target path not found")
             accessor = @path.getAccessor(reference)
             value = @patch.value
             return @realApply(document, reference, accessor, value)
@@ -154,8 +159,12 @@
 
         applyInPlace: (document) ->
             fromReference = @from.getReference(document)
+            unless fromReference?
+                throw new PatchConflictError("Source path not found")
             fromAccessor = @from.getAccessor(fromReference)
             toReference = @path.getReference(document)
+            unless toReference?
+                throw new PatchConflictError("Target path not found")
             toAccessor = @path.getAccessor(toReference)
             return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
 
@@ -169,7 +178,7 @@
                 document = value
             else if isArray(reference)
                 unless 0 <= accessor <= reference.length
-                    throw new PatchConflictError("Index #{accessor} out of bounds")
+                    throw new PatchConflictError("Target path not found")
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
@@ -179,7 +188,7 @@
     class RemovePatch extends SourceRefPatch
         realApply: (document, reference, accessor, value) ->
             if accessor not of reference
-                throw new PatchConflictError("Value at #{accessor} does not exist")
+                throw new PatchConflictError("Target path not found")
             if isArray(reference)
                 reference.splice(accessor, 1)
             else
@@ -196,7 +205,7 @@
                 document = value
             else
                 if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
+                    throw new PatchConflictError("Target path not found")
                 if isArray(reference)
                     reference.splice(accessor, 1, value)
                 else
@@ -224,7 +233,7 @@
 
         realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
             if fromAccessor not of fromReference
-                throw new PatchConflictError("Value at #{fromAccessor} does not exist")
+                throw new PatchConflictError("Source path not found")
             if isArray(fromReference)
                 value = fromReference.splice(fromAccessor, 1)[0]
             else
@@ -234,7 +243,7 @@
                 document = value
             else if isArray(toReference)
                 unless 0 <= toAccessor <= toReference.length
-                    throw new PatchConflictError("Index #{toAccessor} out of bounds")
+                    throw new PatchConflictError("Target path not found")
                 toReference.splice(toAccessor, 0, value)
             else
                 toReference[toAccessor] = value

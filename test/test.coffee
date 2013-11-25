@@ -81,7 +81,12 @@ describe 'add', ->
     it 'should fail if array position out of bounds', ->
         obj = {foo: 1, bar: ['spam', 'eggs']}
         expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/bar/3', value: 'bacon'}]) )
-            .to.throw(jsonpatch.PatchConflictError, 'Index 3 out of bounds')
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if array position is not a number', ->
+        obj = {foo: 1, bar: ['spam', 'eggs']}
+        expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/bar/baz', value: 'bacon'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
 
     it 'should add into nonexisting object key', ->
         obj = {foo: 1, bar: {quux: 'eggs'}}
@@ -194,6 +199,11 @@ describe 'replace', ->
         expect( -> jsonpatch.apply(obj, [{op: 'replace', path: '/bar/-', value: 'bacon'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
+    it 'should fail if target array position is not a number', ->
+        obj = {foo: 1, bar: ['spam', 'eggs']}
+        expect( -> jsonpatch.apply(obj, [{op: 'replace', path: '/bar/baz', value: 'bacon'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
     it 'should replace existing object key', ->
         obj = {foo: 1, bar: {baz: 'spam', quux: 'eggs'}}
         expect( jsonpatch.apply(obj, [{op: 'replace', path: '/bar/baz', value: 'bacon'}]) )
@@ -279,7 +289,7 @@ describe 'move', ->
     it 'should fail if target array position out of bounds', ->
         obj = {foo: 1, bar: ['spam', 'bacon'], quux: 'eggs'}
         expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/quux', path: '/bar/3'}]) )
-            .to.throw(jsonpatch.PatchConflictError, 'Index 3 out of bounds')
+            .to.throw(jsonpatch.PatchConflictError)
 
     it 'should move into nonexisting object key', ->
         obj = {foo: 1, bar: {quux: 'eggs'}, xyzzy: 'spam'}
@@ -321,7 +331,7 @@ describe 'move', ->
     it 'should fail if source array position does not exist', ->
         obj = {foo: 1, bar: ['spam', 'bacon']}
         expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/bar/3', path: '/waldo'}]) )
-            .to.throw(jsonpatch.PatchConflictError, 'Value at 3 does not exist')
+            .to.throw(jsonpatch.PatchConflictError)
 
     it 'should move from array at existing position', ->
         obj = {foo: 1, bar: ['spam', 'eggs']}
@@ -401,7 +411,7 @@ describe 'copy', ->
     it 'should fail if target array position out of bounds', ->
         obj = {foo: 1, bar: ['spam', 'bacon'], quux: 'eggs'}
         expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/quux', path: '/bar/3'}]) )
-            .to.throw(jsonpatch.PatchConflictError, 'Index 3 out of bounds')
+            .to.throw(jsonpatch.PatchConflictError)
 
     it 'should copy into nonexisting object key', ->
         obj = {foo: 1, bar: {quux: 'eggs'}, xyzzy: 'spam'}
@@ -438,7 +448,7 @@ describe 'copy', ->
     it 'should fail if source array position does not exist', ->
         obj = {foo: 1, bar: ['spam', 'bacon']}
         expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/bar/3', path: '/waldo'}]) )
-            .to.throw(jsonpatch.PatchConflictError, 'Value at 3 does not exist')
+            .to.throw(jsonpatch.PatchConflictError)
 
     it 'should copy from array at existing position', ->
         obj = {foo: 1, bar: ['spam', 'eggs']}
