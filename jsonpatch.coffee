@@ -23,6 +23,21 @@
     isEqual = _.isEqual
     cloneDeep = _.cloneDeep
 
+    # Coerce an accessor relative to the reference object type.
+    coerce = (reference, accessor) ->
+        if isArray(reference)
+            if isString(accessor)
+                if accessor is '-'
+                    accessor = reference.length
+                else if /^\d+$/.test(accessor)
+                    accessor = parseInt(accessor, 10)
+                else
+                    # Hack: return -1 so that array indexing will fail.
+                    # Returning null/undefined is not a good idea since
+                    # we use it to signal a reference to the root document.
+                    return -1
+        return accessor
+
     # Various error constructors
     class JSONPatchError extends Error
         constructor: (@message='JSON patch error') ->
@@ -35,7 +50,6 @@
     class PatchConflictError extends JSONPatchError
         constructor: (@message='Patch conflict') ->
             @name = 'PatchConflictError'
-
 
     # Spec: http://tools.ietf.org/html/draft-ietf-appsawg-json-pointer-05
     class JSONPointer
@@ -65,27 +79,14 @@
         findReference: (parent, level) ->
             step = @steps[level]
             return parent if step is undefined
-            if isArray parent then step = parseInt(step, 10)
+            step = coerce(parent, step)
             if step not of parent
                 return null
             return @findReference parent[step], level + 1
 
-        # Returns the @accessor coerced relative to the reference object type,
-        # or null if coercion fails.
+        # Coerce @accessor relative to the reference object type.
         getAccessor: (reference) ->
-            accessor = @accessor
-            if isArray(reference)
-                if isString(accessor)
-                    if accessor is '-'
-                        accessor = reference.length
-                    else if /^\d+$/.test(accessor)
-                        accessor = parseInt(accessor, 10)
-                    else
-                        # Hack: return -1 so that array indexing will fail.
-                        # Returning null/undefined would be interpreted as a
-                        # reference to the root document.
-                        return -1
-            return accessor
+            return coerce(reference, @accessor)
 
 
     # Interface for patch operation classes
