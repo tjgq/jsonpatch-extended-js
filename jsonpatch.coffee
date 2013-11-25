@@ -213,8 +213,7 @@
                 throw new InvalidPatchError("Cannot move into ancestor")
 
             if @from.accessor is @path.accessor
-                # The path and to pointers reference the same location,
-                # therefore apply can be a no-op
+                # Source and target are the same, therefore apply can be a no-op
                 @applyInPlace = (document) -> document
 
         validate: (patch) ->
