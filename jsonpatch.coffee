@@ -111,90 +111,27 @@
         validate: (patch) ->
 
         apply: (document) ->
-            unless @applyInPlace then throw new Error('Method not implemented')
             # Apply the patch to a deep copy of the original document.
             @applyInPlace(cloneDeep(document))
 
 
-    class AddPatch extends JSONPatch
-        validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError('Missing value')
-
+    class SourceRefPatch extends JSONPatch
         applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.getAccessor(reference)
             value = @patch.value
-
-            if not accessor?
-                document = value
-            else if isArray(reference)
-                unless 0 <= accessor <= reference.length
-                    throw new PatchConflictError("Index #{accessor} out of bounds")
-                reference.splice(accessor, 0, value)
-            else
-                reference[accessor] = value
-
-            return document
+            return @realApply(document, reference, accessor, value)
 
 
-    class RemovePatch extends JSONPatch
-        applyInPlace: (document) ->
-            reference = @path.getReference(document)
-            accessor = @path.getAccessor(reference)
-
-            if accessor not of reference
-                throw new PatchConflictError("Value at #{accessor} does not exist")
-            if isArray(reference)
-                reference.splice(accessor, 1)
-            else
-                delete reference[accessor]
-
-            return document
-
-
-    class ReplacePatch extends JSONPatch
-        validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError('Missing value')
-
+    class TargetRefPatch extends JSONPatch
         applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.getAccessor(reference)
             value = @patch.value
-
-            if not accessor?
-                document = value
-            else
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
-                if isArray(reference)
-                    reference.splice(accessor, 1, value)
-                else
-                    reference[accessor] = value
-
-            return document
+            return @realApply(document, reference, accessor, value)
 
 
-    class TestPatch extends JSONPatch
-        validate: (patch) ->
-            if 'value' not of patch then throw new InvalidPatchError('Missing value')
-
-        applyInPlace: (document) ->
-            reference = @path.getReference(document)
-            accessor = @path.getAccessor(reference)
-            value = @patch.value
-
-            if not accessor?
-                result = isEqual(document, value)
-            else
-                result = isEqual(reference[accessor], value)
-
-            if not result
-                throw new PatchConflictError('Test failed')
-
-            return document
-
-
-    class MovePatch extends JSONPatch
+    class BothRefsPatch extends JSONPatch
         initialize: (patch) ->
             @from = new JSONPointer(patch.from)
 
@@ -215,25 +152,19 @@
                 # Source and target are the same, therefore apply can be a no-op
                 @applyInPlace = (document) -> document
 
-        validate: (patch) ->
-            if 'from' not of patch then throw new InvalidPatchError('Missing from')
-
         applyInPlace: (document) ->
-            reference = @from.getReference(document)
-            accessor = @from.getAccessor(reference)
+            fromReference = @from.getReference(document)
+            fromAccessor = @from.getAccessor(fromReference)
+            toReference = @path.getReference(document)
+            toAccessor = @path.getAccessor(toReference)
+            return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
 
-            if accessor not of reference
-                throw new PatchConflictError("Value at #{accessor} does not exist")
-            if isArray(reference)
-                value = reference.splice(accessor, 1)[0]
-            else
-                value = reference[accessor]
-                delete reference[accessor]
 
-            reference = @path.getReference(document)
-            accessor = @path.getAccessor(reference)
+    class AddPatch extends TargetRefPatch
+        validate: (patch) ->
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-            # Add to object
+        realApply: (document, reference, accessor, value) ->
             if not accessor?
                 document = value
             else if isArray(reference)
@@ -242,35 +173,93 @@
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
-
             return document
 
 
-    class CopyPatch extends MovePatch
-        applyInPlace: (document) ->
-            reference = @from.getReference(document)
-            accessor = @from.getAccessor(reference)
-
+    class RemovePatch extends SourceRefPatch
+        realApply: (document, reference, accessor, value) ->
             if accessor not of reference
                 throw new PatchConflictError("Value at #{accessor} does not exist")
             if isArray(reference)
-                value = reference.slice(accessor, accessor + 1)[0]
+                reference.splice(accessor, 1)
             else
-                value = reference[accessor]
+                delete reference[accessor]
+            return document
 
-            reference = @path.getReference(document)
-            accessor = @path.getAccessor(reference)
 
-            # Add to object
+    class ReplacePatch extends TargetRefPatch
+        validate: (patch) ->
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
+
+        realApply: (document, reference, accessor, value) ->
             if not accessor?
                 document = value
-            else if isArray(reference)
-                unless 0 <= accessor <= reference.length
-                    throw new PatchConflictError("Index #{accessor} out of bounds")
-                reference.splice(accessor, 0, value)
             else
-                reference[accessor] = value
+                if accessor not of reference
+                    throw new PatchConflictError("Value at #{accessor} does not exist")
+                if isArray(reference)
+                    reference.splice(accessor, 1, value)
+                else
+                    reference[accessor] = value
+            return document
 
+
+    class TestPatch extends SourceRefPatch
+        validate: (patch) ->
+            if 'value' not of patch then throw new InvalidPatchError('Missing value')
+
+        realApply: (document, reference, accessor, value) ->
+            if not accessor?
+                result = isEqual(document, value)
+            else
+                result = isEqual(reference[accessor], value)
+            if not result
+                throw new PatchConflictError('Test failed')
+            return document
+
+
+    class MovePatch extends BothRefsPatch
+        validate: (patch) ->
+            if 'from' not of patch then throw new InvalidPatchError('Missing from')
+
+        realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
+            if fromAccessor not of fromReference
+                throw new PatchConflictError("Value at #{fromAccessor} does not exist")
+            if isArray(fromReference)
+                value = fromReference.splice(fromAccessor, 1)[0]
+            else
+                value = fromReference[fromAccessor]
+                delete fromReference[fromAccessor]
+            if not toAccessor?
+                document = value
+            else if isArray(toReference)
+                unless 0 <= toAccessor <= toReference.length
+                    throw new PatchConflictError("Index #{toAccessor} out of bounds")
+                toReference.splice(toAccessor, 0, value)
+            else
+                toReference[toAccessor] = value
+            return document
+
+
+    class CopyPatch extends BothRefsPatch
+        validate: (patch) ->
+            if 'from' not of patch then throw new InvalidPatchError('Missing from')
+
+        realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
+            if fromAccessor not of fromReference
+                throw new PatchConflictError("Value at #{fromAccessor} does not exist")
+            if isArray(fromReference)
+                value = fromReference.slice(fromAccessor, fromAccessor + 1)[0]
+            else
+                value = fromReference[fromAccessor]
+            if not toAccessor?
+                document = value
+            else if isArray(toReference)
+                unless 0 <= toAccessor <= toReference.length
+                    throw new PatchConflictError("Index #{toAccessor} out of bounds")
+                toReference.splice(toAccessor, 0, value)
+            else
+                toReference[toAccessor] = value
             return document
 
 
