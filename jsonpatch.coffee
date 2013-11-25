@@ -61,7 +61,7 @@
             @steps = steps
             @path = path
 
-        # Returns an object with the object reference and the accessor
+        # Returns the sub-object of parent pointed to by @steps.
         getReference: (parent) ->
             ref = @findReference parent, 0
             if ref is null
@@ -77,8 +77,7 @@
                 return null
             return @findReference parent[step], level + 1
 
-        # Returns an accessor coerced relative to the
-        # reference object it will be applied to.
+        # Returns the @accessor coerced relative to the reference object type.
         getAccessor: (reference) ->
             accessor = @accessor
             if isArray(reference)
