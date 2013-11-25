@@ -77,9 +77,10 @@
                 return null
             return @findReference parent[step], level + 1
 
-        # Checks and coerces the accessor relative to the reference
-        # object it will be applied to.
-        coerce: (reference, accessor) ->
+        # Returns an accessor coerced relative to the
+        # reference object it will be applied to.
+        getAccessor: (reference) ->
+            accessor = @accessor
             if isArray(reference)
                 if isString(accessor)
                     if accessor is '-'
@@ -88,7 +89,6 @@
                         accessor = parseInt(accessor, 10)
                     else
                         throw new InvalidPointerError('Invalid array index number')
-
             return accessor
 
 
@@ -123,35 +123,33 @@
 
         applyInPlace: (document) ->
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
             value = @patch.value
 
             if not accessor?
                 document = value
             else if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-                if accessor < 0 or accessor > reference.length
+                unless 0 <= accessor <= reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
+
             return document
 
 
     class RemovePatch extends JSONPatch
         applyInPlace: (document) ->
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
 
+            if accessor not of reference
+                throw new PatchConflictError("Value at #{accessor} does not exist")
             if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 reference.splice(accessor, 1)
             else
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 delete reference[accessor]
+
             return document
 
 
@@ -161,20 +159,19 @@
 
         applyInPlace: (document) ->
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
             value = @patch.value
 
             if not accessor?
                 document = value
-            else if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
-                reference.splice(accessor, 1, value)
             else
                 if accessor not of reference
                     throw new PatchConflictError("Value at #{accessor} does not exist")
-                reference[accessor] = value
+                if isArray(reference)
+                    reference.splice(accessor, 1, value)
+                else
+                    reference[accessor] = value
+
             return document
 
 
@@ -184,18 +181,17 @@
 
         applyInPlace: (document) ->
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
             value = @patch.value
 
             if not accessor?
                 result = isEqual(document, value)
             else
-                if isArray(reference)
-                    accessor = @path.coerce(reference, accessor)
                 result = isEqual(reference[accessor], value)
 
             if not result
                 throw new PatchConflictError('Test failed')
+
             return document
 
 
@@ -226,63 +222,57 @@
 
         applyInPlace: (document) ->
             reference = @from.getReference(document)
-            accessor = @from.accessor
+            accessor = @from.getAccessor(reference)
 
+            if accessor not of reference
+                throw new PatchConflictError("Value at #{accessor} does not exist")
             if isArray(reference)
-                accessor = @from.coerce(reference, accessor)
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 value = reference.splice(accessor, 1)[0]
             else
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 value = reference[accessor]
                 delete reference[accessor]
 
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
 
             # Add to object
             if not accessor?
                 document = value
             else if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-                if accessor < 0 or accessor > reference.length
+                unless 0 <= accessor <= reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
+
             return document
 
 
     class CopyPatch extends MovePatch
         applyInPlace: (document) ->
             reference = @from.getReference(document)
-            accessor = @from.accessor
+            accessor = @from.getAccessor(reference)
 
+            if accessor not of reference
+                throw new PatchConflictError("Value at #{accessor} does not exist")
             if isArray(reference)
-                accessor = @from.coerce(reference, accessor)
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 value = reference.slice(accessor, accessor + 1)[0]
             else
-                if accessor not of reference
-                    throw new PatchConflictError("Value at #{accessor} does not exist")
                 value = reference[accessor]
 
             reference = @path.getReference(document)
-            accessor = @path.accessor
+            accessor = @path.getAccessor(reference)
 
             # Add to object
             if not accessor?
                 document = value
             else if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-                if accessor < 0 or accessor > reference.length
+                unless 0 <= accessor <= reference.length
                     throw new PatchConflictError("Index #{accessor} out of bounds")
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
+
             return document
 
 
