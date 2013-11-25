@@ -266,10 +266,15 @@
             value = @patch.value
 
             if not accessor?
-                return isEqual(document, value)
-            if isArray(reference)
-                accessor = @path.coerce(reference, accessor)
-            return isEqual(reference[accessor], value)
+                result = isEqual(document, value)
+            else
+                if isArray(reference)
+                    accessor = @path.coerce(reference, accessor)
+                result = isEqual(reference[accessor], value)
+
+            if not result
+                throw new PatchConflictError('Test failed')
+            return document
 
 
     class MovePatch extends JSONPatch
