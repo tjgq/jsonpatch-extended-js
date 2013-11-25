@@ -5,101 +5,22 @@
 ((root, factory) ->
     if typeof exports isnt 'undefined'
         # NodeJS
-        factory(root, exports)
+        _ = require 'lodash'
+        factory(root, _)
     else
-        # Browser globals
-        root.jsonpatch = factory(root, {})
-) @, (root) ->
+        # Browser
+        root.jsonpatch = factory(root, window._)
+) @, (root, _) ->
 
     # Utilities
     toString = Object.prototype.toString
     hasOwnProperty = Object.prototype.hasOwnProperty
 
-    # Define a few helper functions taken from the awesome underscore library
-    isArray = (obj) -> toString.call(obj) is '[object Array]'
-    isObject = (obj) -> toString.call(obj) is '[object Object]'
-    isString = (obj) -> toString.call(obj) is '[object String]'
-
-    # Limited Underscore.js implementation, internal recursive comparison function.
-    _isEqual = (a, b, stack) ->
-        # Identical objects are equal. `0 === -0`, but they aren't identical.
-        # See the Harmony `egal` proposal: http://wiki.ecmascript.org/doku.php?id=harmony:egal.
-        if a is b then return a isnt 0 or 1 / a == 1 / b
-        # A strict comparison is necessary because `null == undefined`.
-        if a == null or b == null then return a is b
-        # Compare `[[Class]]` names.
-        className = toString.call(a)
-        if className isnt toString.call(b) then return false
-        switch className
-            # Strings, numbers, and booleans are compared by value.
-            when '[object String]'
-                # Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
-                # equivalent to `new String("5")`.
-                String(a) is String(b)
-            when '[object Number]'
-                a = +a
-                b = +b
-                # `NaN`s are equivalent, but non-reflexive. An `egal` comparison is performed for
-                # other numeric values.
-                if a isnt a
-                    b isnt b
-                else
-                    if a is 0
-                        1 / a is 1 / b
-                    else
-                        a is b
-            when '[object Boolean]'
-                # Coerce dates and booleans to numeric primitive values. Dates are compared by their
-                # millisecond representations. Note that invalid dates with millisecond representations
-                # of `NaN` are not equivalent.
-                +a is +b
-
-        if typeof a isnt 'object' or typeof b isnt 'object' then return false
-        # Assume equality for cyclic structures. The algorithm for detecting cyclic
-        # structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
-        length = stack.length
-        while length--
-            # Linear search. Performance is inversely proportional to the number of
-            # unique nested structures.
-            if stack[length] is a then return true
-
-        # Add the first object to the stack of traversed objects.
-        stack.push(a)
-        size = 0
-        result = true
-        # Recursively compare objects and arrays.
-        if className is '[object Array]'
-            # Compare array lengths to determine if a deep comparison is necessary.
-            size = a.length
-            result = size is b.length
-            if result
-                # Deep compare the contents, ignoring non-numeric properties.
-                while size--
-                    # Ensure commutative equality for sparse arrays.
-                    if not (result = size in a is size in b and _isEqual(a[size], b[size], stack)) then break
-        else
-            # Objects with different constructors are not equivalent.
-            if "constructor" in a isnt "constructor" in b or a.constructor isnt b.constructor then return false
-            # Deep compare objects.
-            for key of a
-                if hasOwnProperty.call(a, key)
-                    # Count the expected number of properties.
-                    size++
-                    # Deep compare each member.
-                    if not (result = hasOwnProperty.call(b, key) and _isEqual(a[key], b[key], stack)) then break
-
-            # Ensure that both objects contain the same number of properties.
-            if result
-                for key of b
-                    if hasOwnProperty.call(b, key) and not size-- then break
-                result = not size
-        # Remove the first object from the stack of traversed objects.
-        stack.pop()
-        return result
-
-    # Perform a deep comparison to check if two objects are equal.
-    isEqual = (a, b) -> _isEqual(a, b, [])
-
+    # Grab a few helper functions from underscore/lodash
+    isArray = _.isArray
+    isObject = _.isObject
+    isString = _.isString
+    isEqual = _.isEqual
 
     # Various error constructors
     class JSONPatchError extends Error

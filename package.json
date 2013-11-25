@@ -18,5 +18,8 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/bruth/jsonpatch-js.git"
+  },
+  "dependencies": {
+    "lodash": "~2.3.0"
   }
 }
