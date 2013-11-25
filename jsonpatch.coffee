@@ -84,7 +84,7 @@
                 if isString(accessor)
                     if accessor is '-'
                         accessor = reference.length
-                    else if /^[-+]?\d+$/.test(accessor)
+                    else if /^\d+$/.test(accessor)
                         accessor = parseInt(accessor, 10)
                     else
                         throw new InvalidPointerError('Invalid array index number')
