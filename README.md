@@ -24,8 +24,6 @@ bower install json-patch
 npm install json-patch
 ```
 
-**Note: at this time, all operations are applied in-place.**
-
 ## Methods
 
 **`jsonpatch.apply(document, patch)`**

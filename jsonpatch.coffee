@@ -21,6 +21,7 @@
     isObject = _.isObject
     isString = _.isString
     isEqual = _.isEqual
+    cloneDeep = _.cloneDeep
 
     # Various error constructors
     class JSONPatchError extends Error
@@ -110,14 +111,17 @@
 
         validate: (patch) ->
 
-        apply: (document) -> throw new Error('Method not implemented')
+        apply: (document) ->
+            unless @applyInPlace then throw new Error('Method not implemented')
+            # Apply the patch to a deep copy of the original document.
+            @applyInPlace(cloneDeep(document))
 
 
     class AddPatch extends JSONPatch
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.accessor
             value = @patch.value
@@ -135,7 +139,7 @@
 
 
     class RemovePatch extends JSONPatch
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.accessor
 
@@ -155,7 +159,7 @@
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.accessor
             value = @patch.value
@@ -178,7 +182,7 @@
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @path.getReference(document)
             accessor = @path.accessor
             value = @patch.value
@@ -215,12 +219,12 @@
             if @from.accessor is @path.accessor
                 # The path and to pointers reference the same location,
                 # therefore apply can be a no-op
-                @apply = (document) -> document
+                @applyInPlace = (document) -> document
 
         validate: (patch) ->
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @from.getReference(document)
             accessor = @from.accessor
 
@@ -252,7 +256,7 @@
 
 
     class CopyPatch extends MovePatch
-        apply: (document) ->
+        applyInPlace: (document) ->
             reference = @from.getReference(document)
             accessor = @from.accessor
 
@@ -305,9 +309,12 @@
             ops.push new klass(p)
 
         return (document) ->
-            result = document
+            # Since we are applying multiple patches in succession,
+            # we only need to clone the original document and apply
+            # the patches in place.
+            result = cloneDeep(document)
             for op in ops
-                result = op.apply(document)
+                result = op.applyInPlace(document)
             return result
 
 
