@@ -76,63 +76,91 @@
     Wildcard = {}
 
     # Spec: http://tools.ietf.org/html/draft-ietf-appsawg-json-pointer-05
-    # Extended to support wildcard matching on path components.
+    # Extended to support wildcard matching and single-level lookahead on non-final path components.
     class JSONPointer
         constructor: (path) ->
             steps = []
+            lookaheads = []
 
             # A path must either be empty or start with /.
             # An empty path refers to the document root.
             if path and (steps = path.split '/').shift() isnt ''
                 throw new InvalidPointerError('Path must be empty or start with /')
 
-            # Decode each component, decode JSON Pointer specific syntax ~0 and ~1
             for step, i in steps
-                if steps[i] is '*'
-                    steps[i] = Wildcard
-                else
-                    # Unescape each component
-                    steps[i] = step
-                        .replace('~2', '*')
-                        .replace('~1', '/')
-                        .replace('~0', '~')
+                [steps[i], lookaheads[i]] = @decodeStep(step)
+
+            if steps[steps.length-1] is Wildcard
+                throw new InvalidPointerError('Last path component cannot be a wilcard')
 
             @steps = steps
+            @lookaheads = lookaheads
             @path = path
 
+        decodeStep: (step) ->
+            # 1st token is accessor
+            # 2nd token is lookahead
+            # 3rd token is lookahead key name
+            # 4th token is lookahead key value
+            match = /^([^\[]*)(\[([^\]=]*)=([^\]]*)\])?$/.exec(step)
+            unless match?
+                throw new InvalidPointerError("Invalid component")
+            lookahead = if match[2] then [match[3], match[4]] else null
+            step = if match[1] is '*' then Wildcard else @unescape(match[1])
+            return [step, lookahead]
+
+        # Decode JSON Pointer specific syntax ~0 and ~1
+        unescape: (step) ->
+            step.replace('~2', '*').replace('~1', '/').replace('~0', '~')
+
         # Return the object referenced by the pointer and its parent object.
-        # Modify determines whether the reference is to be modified,
-        # in which case the last component may not exist yet.
+        # Modify determines whether the reference is a modification target,
+        # in which case the last component may not yet exist.
         # If the referenced object is the root, return a null parent.
         # If the pointed to object is not found, return a null object.
         getReference: (object, modify) ->
-
-            find = (object, level) =>
-
-                findWildcard = () =>
-                    # Try every array position or object property.
-                    elems = switch
-                        when isArray object then listIndices object
-                        when isObject object then listKeys object
-                        else [] # XXX what about primitive types?
-                    for e in elems
-                        # Return the first successful match.
-                        [reference, accessor] = find(object[e], level + 1)
-                        return [reference, accessor] if accessor?
-                    return [object, null]
-
-                step = @steps[level]
-                isLast = level is @steps.length - 1
-                if step is Wildcard
-                    throw InvalidPointerError("Last path component can't be wildcard") if isLast
-                    return findWildcard(object, level)
-                accessor = coerce(object, step, modify and isLast)
-                return [object, null] unless accessor?
-                return [object, accessor] if isLast
-                return find(object[accessor], level + 1)
-
             return [null, object] unless @steps.length # root doc
-            return find(object, 0)
+            return @findReference(object, 0, modify)
+
+        # Find a reference, beginning at the specified level.
+        findReference: (object, level, modify) =>
+
+            matchLookahead = (object) =>
+                return true unless @lookaheads[level]
+                return false unless isArray(object) or isObject(object)
+                [key, value] = @lookaheads[level]
+                return key of object and object[key] is value
+
+            # Get the current step.
+            step = @steps[level]
+            isLast = level is @steps.length - 1
+
+            # Determine the available search possibilities.
+            if step is Wildcard
+                # Consider every array position or object property.
+                accessors = switch
+                    when isArray object then listIndices object
+                    when isObject object then listKeys object
+                    else [] # XXX what about primitive types?
+            else
+                # Consider only the specified array position or object property,
+                # as long as it exists or is a modification target.
+                acc = coerce(object, step, modify and isLast)
+                accessors =  if acc? then [acc] else []
+
+            # Go through each search possibility.
+            for acc in accessors
+                # Check that the lookahead matches.
+                continue unless matchLookahead(object[acc])
+                # If this is the last step, don't go any deeper.
+                return [object, acc] if isLast
+                # Search one level deeper.
+                [ref, acc] = @findReference(object[acc], level+1, modify)
+                # Return the first match.
+                return [ref, acc] if acc?
+
+            # No match found.
+            return [object, null]
 
 
     # Interface for patch operation classes
