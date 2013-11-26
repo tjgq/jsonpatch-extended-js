@@ -23,20 +23,31 @@
     isEqual = _.isEqual
     cloneDeep = _.cloneDeep
 
-    # Coerce an accessor relative to the reference object type.
-    coerce = (reference, accessor) ->
+    coerceForArray = (reference, accessor, modify) ->
+        switch
+            when accessor is '-'
+                accessor = reference.length
+            when /^\d+$/.test(accessor)
+                accessor = parseInt(accessor, 10)
+            else
+                return null
+        if accessor < reference.length + (if modify then 1 else 0)
+            return accessor
+        return null
+
+    coerceForObject = (reference, accessor, modify) ->
+        if modify or accessor of reference
+            return accessor
+        return null
+
+    # Coerce an accessor relative to the reference object type
+    # and whether modifications are allowed.
+    # Returns null if the reference is invalid.
+    coerce = (reference, accessor, modify) ->
         if isArray(reference)
-            if isString(accessor)
-                if accessor is '-'
-                    accessor = reference.length
-                else if /^\d+$/.test(accessor)
-                    accessor = parseInt(accessor, 10)
-                else
-                    # Hack: return -1 so that array indexing will fail.
-                    # Returning null/undefined is not a good idea since
-                    # we use it to signal a reference to the root document.
-                    return -1
-        return accessor
+            return coerceForArray(reference, accessor, modify)
+        else
+            return coerceForObject(reference, accessor, modify)
 
     # Various error constructors
     class JSONPatchError extends Error
@@ -65,28 +76,26 @@
             for step, i in steps
                 steps[i] = step.replace('~1', '/').replace('~0', '~')
 
-            # The final segment is the accessor (property/index) of the object
-            # the pointer ultimately references
-            @accessor = steps.pop()
             @steps = steps
             @path = path
 
-        # Returns the sub-object of parent pointed to by @steps,
-        # or null if not found.
-        getReference: (parent) ->
-            return @findReference parent, 0
+        # Return the object referenced by the pointer and its parent object.
+        # Modify determines whether the reference is to be modified,
+        # in which case the last component may not exist yet.
+        # If the referenced object is the root, return a null parent.
+        # If the pointed to object is not found, return a null object.
+        getReference: (object, modify) ->
 
-        findReference: (parent, level) ->
-            step = @steps[level]
-            return parent if step is undefined
-            step = coerce(parent, step)
-            if step not of parent
-                return null
-            return @findReference parent[step], level + 1
+            find = (object, level) =>
+                step = @steps[level]
+                isLast = level is @steps.length - 1
+                accessor = coerce(object, step, modify and isLast)
+                return [object, null] unless accessor?
+                return [object, accessor] if isLast
+                return find(object[accessor], level + 1)
 
-        # Coerce @accessor relative to the reference object type.
-        getAccessor: (reference) ->
-            return coerce(reference, @accessor)
+            return [null, object] unless @steps.length # root doc
+            return find(object, 0)
 
 
     # Interface for patch operation classes
@@ -115,20 +124,18 @@
 
     class SourceRefPatch extends JSONPatch
         applyInPlace: (document) ->
-            reference = @path.getReference(document)
-            unless reference?
+            [reference, accessor] = @path.getReference(document, false)
+            unless accessor?
                 throw new PatchConflictError("Source path not found")
-            accessor = @path.getAccessor(reference)
             value = @patch.value
             return @realApply(document, reference, accessor, value)
 
 
     class TargetRefPatch extends JSONPatch
         applyInPlace: (document) ->
-            reference = @path.getReference(document)
-            unless reference?
+            [reference, accessor] = @path.getReference(document, true)
+            unless accessor?
                 throw new PatchConflictError("Target path not found")
-            accessor = @path.getAccessor(reference)
             value = @patch.value
             return @realApply(document, reference, accessor, value)
 
@@ -137,32 +144,28 @@
         initialize: (patch) ->
             @from = new JSONPointer(patch.from)
 
-            # Check whether @from is a proper prefix of @path.
-            # Don't forget that the last component of @from is its accessor.
+            # Check whether @from is a prefix of @path.
             isPrefix = true
             for i in [0...@from.steps.length]
                 if @from.steps[i] isnt @path.steps[i]
                     isPrefix = false
                     break
-            isPrefix = false if @from.accessor isnt @path.steps[@from.steps.length]
-            isPrefix = false if @from.path == '' and @path.path == '' # moving root into root
 
             if isPrefix
-                throw new InvalidPatchError("Cannot move into ancestor")
-
-            if @from.accessor is @path.accessor
-                # Source and target are the same, therefore apply can be a no-op
-                @applyInPlace = (document) -> document
+                if @from.steps.length is @path.steps.length
+                    # Source and target are the same, therefore apply can be a no-op
+                    @applyInPlace = (document) -> document
+                else
+                    # From is a proper prefix of path
+                    throw new InvalidPatchError("Cannot move or copy into ancestor")
 
         applyInPlace: (document) ->
-            fromReference = @from.getReference(document)
-            unless fromReference?
+            [fromReference, fromAccessor] = @from.getReference(document, false)
+            unless fromAccessor?
                 throw new PatchConflictError("Source path not found")
-            fromAccessor = @from.getAccessor(fromReference)
-            toReference = @path.getReference(document)
-            unless toReference?
+            [toReference, toAccessor] = @path.getReference(document, true)
+            unless toAccessor?
                 throw new PatchConflictError("Target path not found")
-            toAccessor = @path.getAccessor(toReference)
             return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
 
 
@@ -171,11 +174,9 @@
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         realApply: (document, reference, accessor, value) ->
-            if not accessor?
+            if not reference?
                 document = value
             else if isArray(reference)
-                unless 0 <= accessor <= reference.length
-                    throw new PatchConflictError("Target path not found")
                 reference.splice(accessor, 0, value)
             else
                 reference[accessor] = value
@@ -184,8 +185,8 @@
 
     class RemovePatch extends SourceRefPatch
         realApply: (document, reference, accessor, value) ->
-            if accessor not of reference
-                throw new PatchConflictError("Target path not found")
+            if not reference?
+                throw new PatchConflictError("Can't remove root document")
             if isArray(reference)
                 reference.splice(accessor, 1)
             else
@@ -193,16 +194,14 @@
             return document
 
 
-    class ReplacePatch extends TargetRefPatch
+    class ReplacePatch extends SourceRefPatch
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         realApply: (document, reference, accessor, value) ->
-            if not accessor?
+            if not reference?
                 document = value
             else
-                if accessor not of reference
-                    throw new PatchConflictError("Target path not found")
                 if isArray(reference)
                     reference.splice(accessor, 1, value)
                 else
@@ -215,7 +214,7 @@
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
         realApply: (document, reference, accessor, value) ->
-            if not accessor?
+            if not reference?
                 result = isEqual(document, value)
             else
                 result = isEqual(reference[accessor], value)
@@ -229,18 +228,14 @@
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
         realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
-            if fromAccessor not of fromReference
-                throw new PatchConflictError("Source path not found")
             if isArray(fromReference)
                 value = fromReference.splice(fromAccessor, 1)[0]
             else
                 value = fromReference[fromAccessor]
                 delete fromReference[fromAccessor]
-            if not toAccessor?
+            if not toReference?
                 document = value
             else if isArray(toReference)
-                unless 0 <= toAccessor <= toReference.length
-                    throw new PatchConflictError("Target path not found")
                 toReference.splice(toAccessor, 0, value)
             else
                 toReference[toAccessor] = value
@@ -252,17 +247,13 @@
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
         realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
-            if fromAccessor not of fromReference
-                throw new PatchConflictError("Value at #{fromAccessor} does not exist")
             if isArray(fromReference)
                 value = fromReference.slice(fromAccessor, fromAccessor + 1)[0]
             else
                 value = fromReference[fromAccessor]
-            if not toAccessor?
+            if not toReference?
                 document = value
             else if isArray(toReference)
-                unless 0 <= toAccessor <= toReference.length
-                    throw new PatchConflictError("Index #{toAccessor} out of bounds")
                 toReference.splice(toAccessor, 0, value)
             else
                 toReference[toAccessor] = value

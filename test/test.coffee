@@ -316,7 +316,7 @@ describe 'move', ->
     it 'should fail if moving from root', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
         expect( -> jsonpatch.apply(obj, [{op: 'move', from: '', path: '/waldo'}]) )
-            .to.throw(jsonpatch.InvalidPatch, 'Cannot move into ancestor')
+            .to.throw(jsonpatch.InvalidPatch)
 
     it 'should move from empty key at root', ->
         obj = {foo: 1, '': 'spam'}
