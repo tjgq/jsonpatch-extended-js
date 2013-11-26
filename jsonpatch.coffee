@@ -76,7 +76,7 @@
     Wildcard = {}
 
     # Spec: http://tools.ietf.org/html/draft-ietf-appsawg-json-pointer-05
-    # Extended to support wildcard matching and single-level lookahead on non-final path components.
+    # Extended to support wildcard matching and single-level, single-attribute lookahead.
     class JSONPointer
         constructor: (path) ->
             steps = []
@@ -89,9 +89,6 @@
 
             for step, i in steps
                 [steps[i], lookaheads[i]] = @decodeStep(step)
-
-            if steps[steps.length-1] is Wildcard
-                throw new InvalidPointerError('Last path component cannot be a wilcard')
 
             @steps = steps
             @lookaheads = lookaheads

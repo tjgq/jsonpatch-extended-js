@@ -607,10 +607,10 @@ describe 'test', ->
 
 describe 'wildcard', ->
 
-    it 'should fail test if last path component is wildcard', ->
+    it 'should pass test if last path component is wildcard', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
-        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*', value: 'spam'}]) )
-            .to.throw(jsonpatch.InvalidPointerError)
+        expect( jsonpatch.apply(obj, [{op: 'test', path: '/bar/*', value: 'spam'}]) )
+            .to.deep.equal( {foo: 1, bar: {baz: 'spam'}} )
 
     it 'should fail test if wildcard component indexes a non-object', ->
         obj = {foo: 1, bar: 2}
@@ -707,6 +707,38 @@ describe 'lookahead', ->
     it 'should fail test on path with non-matching non-final lookahead value on array position', ->
         obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}, {xyzzy: 'bacon'}]}
         expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/0[spam=eggs]/quux', value: 'eggs'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    # Lookahead in final component, combined with wildcard
+
+    it 'should pass test on path with matching final lookahead on wildcard object key', ->
+        obj = {foo: 1, bar: {yes: {baz: 'spam', quux: 'eggs'}, no: {xyzzy: 'bacon'}}}
+        expect( jsonpatch.apply(obj, [{op: 'test', path: '/bar/*[baz=spam]', value: {baz: 'spam', quux: 'eggs'}}]) )
+            .to.deep.equal( {foo: 1, bar: {yes: {baz: 'spam', quux: 'eggs'}, no: {xyzzy: 'bacon'}}} )
+
+    it 'should fail test on path with non-matching final lookahead key on wildcard object key', ->
+        obj = {foo: 1, bar: {yes: {baz: 'spam', quux: 'eggs'}, no: {xyzzy: 'bacon'}}}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/*[quack=spam]', value: {baz: 'spam', quux: 'eggs'}}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail test on path with non-matching final lookahead value on wildcard object key', ->
+        obj = {foo: 1, bar: {yes: {baz: 'spam', quux: 'eggs'}, no: {xyzzy: 'bacon'}}}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/*[baz=eggs]', value: {baz: 'spam', quux: 'eggs'}}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should pass test on path with matching final lookahead on wildcard array position', ->
+        obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}, {xyzzy: 'bacon'}]}
+        expect( jsonpatch.apply(obj, [{op: 'test', path: '/bar/*[baz=spam]', value: {baz: 'spam', quux: 'eggs'}}]) )
+            .to.deep.equal( {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}, {xyzzy: 'bacon'}]} )
+
+    it 'should fail test on path with non-matching final lookahead key on wildcard array position', ->
+        obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}, {xyzzy: 'bacon'}]}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*[quack=spam]', value: {baz: 'spam', quux: 'eggs'}}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail test on path with non-matching final lookahead value on wildcard array position', ->
+        obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}, {xyzzy: 'bacon'}]}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*[spam=eggs]', value: {baz: 'spam', quux: 'eggs'}}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     # Lookahead in non-final component, combined with wildcard
