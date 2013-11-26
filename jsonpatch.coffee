@@ -248,7 +248,7 @@
     class RemovePatch extends SourceRefPatch
         realApply: (document, reference, accessor, value) ->
             if not reference?
-                throw new PatchConflictError("Can't remove root document")
+                throw new InvalidPatchError("Can't remove root document")
             if isArray(reference)
                 reference.splice(accessor, 1)
             else

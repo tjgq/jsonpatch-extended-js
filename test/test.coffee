@@ -114,7 +114,7 @@ describe 'remove', ->
     it 'should fail if target is root', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
         expect( -> jsonpatch.apply(obj, [{op: 'remove', path: ''}]) )
-            .to.throw(jsonpatch.PatchConflictError)
+            .to.throw(jsonpatch.InvalidPatchError)
 
     it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
