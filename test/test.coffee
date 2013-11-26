@@ -612,6 +612,11 @@ describe 'wildcard', ->
         expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*', value: 'spam'}]) )
             .to.throw(jsonpatch.InvalidPointerError)
 
+    it 'should fail test if wildcard component indexes a non-object', ->
+        obj = {foo: 1, bar: 2}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*/quux', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
     it 'should pass test on path with matching wildcard on object key', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
         expect( jsonpatch.apply(obj, [{op: 'test', path: '/*/baz', value: 'spam'}]) )
