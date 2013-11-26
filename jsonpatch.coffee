@@ -21,6 +21,8 @@
     isObject = _.isObject
     isString = _.isString
     isEqual = _.isEqual
+    listIndices = (arr) -> [0...arr.length]
+    listKeys = _.keys
     cloneDeep = _.cloneDeep
 
     coerceForArray = (reference, accessor, modify) ->
@@ -66,7 +68,11 @@
         constructor: (@message='Patch conflict') ->
             @name = 'PatchConflictError'
 
+    # The singleton wildcard object.
+    Wildcard = {}
+
     # Spec: http://tools.ietf.org/html/draft-ietf-appsawg-json-pointer-05
+    # Extended to support wildcard matching on path components.
     class JSONPointer
         constructor: (path) ->
             steps = []
@@ -78,7 +84,14 @@
 
             # Decode each component, decode JSON Pointer specific syntax ~0 and ~1
             for step, i in steps
-                steps[i] = step.replace('~1', '/').replace('~0', '~')
+                if steps[i] is '*'
+                    steps[i] = Wildcard
+                else
+                    # Unescape each component
+                    steps[i] = step
+                        .replace('~2', '*')
+                        .replace('~1', '/')
+                        .replace('~0', '~')
 
             @steps = steps
             @path = path
@@ -91,8 +104,24 @@
         getReference: (object, modify) ->
 
             find = (object, level) =>
+
+                findWildcard = () =>
+                    # Try every array position or object property.
+                    elems = switch
+                        when isArray object then listIndices object
+                        when isObject object then listKeys object
+                        else [] # XXX what about primitive types?
+                    for e in elems
+                        # Return the first successful match.
+                        [reference, accessor] = find(object[e], level + 1)
+                        return [reference, accessor] if accessor?
+                    return [object, null]
+
                 step = @steps[level]
                 isLast = level is @steps.length - 1
+                if step is Wildcard
+                    throw InvalidPointerError("Last path component can't be wildcard") if isLast
+                    return findWildcard(object, level)
                 accessor = coerce(object, step, modify and isLast)
                 return [object, null] unless accessor?
                 return [object, accessor] if isLast

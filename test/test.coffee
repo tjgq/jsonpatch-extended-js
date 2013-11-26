@@ -603,3 +603,31 @@ describe 'test', ->
         obj = {foo: 1, bar: [{baz: 'spam'}, {quux: 'eggs', xyzzy: 'bacon'}]}
         expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/1/xyzzy', value: 'tomato'}]) )
             .to.throw(jsonpatch.PatchConflictError)
+
+
+describe 'wildcards', ->
+
+    it 'should fail test if last path component is wildcard', ->
+        obj = {foo: 1, bar: {baz: 'spam'}}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*', value: 'spam'}]) )
+            .to.throw(jsonpatch.InvalidPointerError)
+
+    it 'should pass test on path with matching wildcard on object key', ->
+        obj = {foo: 1, bar: {baz: 'spam'}}
+        expect( jsonpatch.apply(obj, [{op: 'test', path: '/*/baz', value: 'spam'}]) )
+            .to.deep.equal( {foo: 1, bar: {baz: 'spam'}} )
+
+    it 'should fail test on path with non-matching wildcard on object key', ->
+        obj = {foo: 1, bar: {baz: 'spam'}}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/*/quux', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should pass test on path with matching wildcard on array position', ->
+        obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]}
+        expect( jsonpatch.apply(obj, [{op: 'test', path: '/bar/*/baz', value: 'spam'}]) )
+            .to.deep.equal( {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]} )
+
+    it 'should fail test on path with non-matching wildcard on array position', ->
+        obj = {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/*/waldo', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
