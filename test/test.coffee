@@ -33,9 +33,14 @@ describe 'add', ->
         expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/bar/quux'}]) )
             .to.throw(jsonpatch.InvalidPatchError)
 
-    it 'should fail if target has nonexisting component', ->
+    it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
         expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/bar/baz', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/foo/bar', value: 'spam'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     it 'should add at root', ->
@@ -111,9 +116,14 @@ describe 'remove', ->
         expect( -> jsonpatch.apply(obj, [{op: 'remove', path: ''}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
-    it 'should fail if target has nonexisting component', ->
+    it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
         expect( -> jsonpatch.apply(obj, [{op: 'remove', path: '/bar/baz'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'remove', path: '/foo/bar', value: 'spam'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     it 'should remove empty key at root', ->
@@ -164,9 +174,14 @@ describe 'replace', ->
         expect( -> jsonpatch.apply(obj, [{op: 'replace', path: '/bar/baz'}]) )
             .to.throw(jsonpatch.InvalidPatchError)
 
-    it 'should fail if target has nonexisting component', ->
+    it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
-        expect( -> jsonpatch.apply(obj, [{op: 'add', path: '/bar/baz', value: 'spam'}]) )
+        expect( -> jsonpatch.apply(obj, [{op: 'replace', path: '/bar/baz', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'replace', path: '/foo/bar', value: 'spam'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     it 'should replace root', ->
@@ -241,8 +256,13 @@ describe 'move', ->
 
     # Tests for target
 
-    it 'should fail if target has nonexisting component', ->
+    it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/foo', path: '/bar/baz'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1, bar: 2}
         expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/foo', path: '/bar/baz'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
@@ -308,9 +328,14 @@ describe 'move', ->
 
     # Tests for source
 
-    it 'should fail if source has nonexisting component', ->
+    it 'should fail if source path has nonexisting component', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
-        expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/xyzzy/waldo', path: '/bar/quux'}]) )
+        expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/xyzzy/waldo', path: '/bar/baz'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if source path indexes a non-object', ->
+        obj = {foo: 1, bar: {baz: 'spam'}, xyzzy: 2}
+        expect( -> jsonpatch.apply(obj, [{op: 'move', from: '/xyzzy/waldo', path: '/bar/baz'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     it 'should fail if moving from root', ->
@@ -363,8 +388,13 @@ describe 'copy', ->
 
     # Tests for target
 
-    it 'should fail if target has nonexisting component', ->
+    it 'should fail if target path has nonexisting component', ->
         obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/foo', path: '/bar/baz'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1, bar: 2}
         expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/foo', path: '/bar/baz'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
@@ -430,9 +460,14 @@ describe 'copy', ->
 
     # Tests for source
 
-    it 'should fail if source has nonexisting component', ->
+    it 'should fail if source path has nonexisting component', ->
         obj = {foo: 1, bar: {baz: 'spam'}}
-        expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/xyzzy/waldo', path: '/bar/quux'}]) )
+        expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/xyzzy/waldo', path: '/bar/baz'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if source path indexes a non-object', ->
+        obj = {foo: 1, bar: {baz: 'spam'}, xyzzy: 2}
+        expect( -> jsonpatch.apply(obj, [{op: 'copy', from: '/xyzzy/waldo', path: '/bar/baz'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 
     it 'should copy from empty key at root', ->
@@ -482,6 +517,11 @@ describe 'test', ->
 
     it 'should fail if target has nonexisting component', ->
         obj = {foo: 1}
+        expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/baz', value: 'spam'}]) )
+            .to.throw(jsonpatch.PatchConflictError)
+
+    it 'should fail if target path indexes a non-object', ->
+        obj = {foo: 1, bar: 2}
         expect( -> jsonpatch.apply(obj, [{op: 'test', path: '/bar/baz', value: 'spam'}]) )
             .to.throw(jsonpatch.PatchConflictError)
 

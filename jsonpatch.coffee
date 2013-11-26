@@ -44,10 +44,14 @@
     # and whether modifications are allowed.
     # Returns null if the reference is invalid.
     coerce = (reference, accessor, modify) ->
-        if isArray(reference)
-            return coerceForArray(reference, accessor, modify)
-        else
-            return coerceForObject(reference, accessor, modify)
+        switch
+            when isArray(reference)
+                return coerceForArray(reference, accessor, modify)
+            when isObject(reference)
+                return coerceForObject(reference, accessor, modify)
+            else
+                # Attempting to index a non-object
+                return null
 
     # Various error constructors
     class JSONPatchError extends Error
