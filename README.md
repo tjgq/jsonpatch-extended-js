@@ -1,38 +1,26 @@
-# jsonpatch-js
+# jsonpatch-extended.js
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/bruth/jsonpatch-js/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+Javascript library to apply JSON Patches with JSON Pointer syntax extensions.
 
-Library to apply JSON Patches in JavaScript
+Code adapted from [jsonpatch-js](http://github.com/bruth/jsonpatch-js) by Byron Ruth.
 
-- JSON Patch - http://tools.ietf.org/html/rfc6902
-- JSON Pointer - http://tools.ietf.org/html/rfc6901
+References:
 
-jsonpatch-js works as in the browser as a script, as a Node module and as an
-AMD module.
-
-## Install
-
-**Bower**
-
-```
-bower install json-patch
-```
-
-**NPM**
-
-```
-npm install json-patch
-```
+* JSON Patch - http://tools.ietf.org/html/rfc6902
+* JSON Pointer - http://tools.ietf.org/html/rfc6901
+* Extensions (to be documented):
+    * wildcard references
+    * attribute lookahead
 
 ## Methods
 
-**`jsonpatch.apply(document, patch)`**
+**`jsonpatch.apply(document, patch, skipConflicts=true)`**
 
-Applies a patch to the document
+Applies a patch set to the document. If skipConflicts is true, conflicting patches are silently ignored instead of aborting the operation.
 
 **`jsonpatch.compile(patch)`**
 
-Compiles a patch and returns a function that takes a document to apply the patch to.
+Compiles a patch set and returns a function that takes a document to apply the patch set to.
 
 ## Patch Operations
 
@@ -104,7 +92,7 @@ jsonpatch.apply({foo: [1, 2, 3]}, [{op: 'copy', from: '/foo/1', path: '/bar'}]);
 Patch syntax: `{op: 'test', path: <path>, value: <value>}`
 
 ```javascript
-// Test equality of property to value, result: true
+// Test equality of property to value, result: {foo: 'bar'}
 jsonpatch.apply({foo: 'bar'}, [{op: 'test', path: '/foo', value: 'bar'}]
 ```
 

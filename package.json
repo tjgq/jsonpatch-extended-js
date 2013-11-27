@@ -1,8 +1,8 @@
 {
-  "name": "json-patch",
-  "author": "Byron Ruth <b@devel.io>",
-  "version": "0.4.0",
-  "description": "A JavaScript implementation of the JSON Media Type for partial modifications: http://tools.ietf.org/html/rfc6902",
+  "name": "jsonpatch-extended",
+  "author": "Tiago Quelhas <tiagoq@gmail.com>",
+  "version": "0.5.0",
+  "description": "Javascript library to apply JSON Patches with JSON Pointer syntax extensions",
   "license": "BSD",
   "keywords": [
     "diff",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/bruth/jsonpatch-js.git"
+    "url": "git://github.com/tjgq/jsonpatch-extended-js.git"
   },
   "dependencies": {
     "lodash": "~2.3.0"

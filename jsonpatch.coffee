@@ -1,6 +1,6 @@
-# jsonpatch.js 0.4
-# (c) 2011-2012 Byron Ruth
-# jsonpatch may be freely distributed under the BSD license
+# jsonpatch.js
+# (c) 2013 Tiago Quelhas, (c) 2011-2012 Byron Ruth
+# This code may be freely distributed under the BSD license.
 
 ((root, factory) ->
     if typeof exports isnt 'undefined'
