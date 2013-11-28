@@ -5,8 +5,7 @@
 ((root, factory) ->
     if typeof exports isnt 'undefined'
         # NodeJS
-        _ = require 'lodash'
-        factory(root, _)
+        factory(root, require('lodash'))
     else
         # Browser
         root.jsonpatch = factory(root, window._)
