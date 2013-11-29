@@ -301,7 +301,7 @@
         var fromAccessor, fromReference, toAccessor, toReference, _ref3, _ref4;
         _ref3 = this.from.getReference(document, false), fromReference = _ref3[0], fromAccessor = _ref3[1];
         if (fromAccessor == null) {
-          if (skipOnConflicts) {
+          if (skipConflicts) {
             return document;
           }
           throw new PatchConflictError("Source path '" + this.from.path + "' not found");

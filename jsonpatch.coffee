@@ -225,7 +225,7 @@
         applyInPlace: (document, skipConflicts) ->
             [fromReference, fromAccessor] = @from.getReference(document, false)
             unless fromAccessor?
-                if skipOnConflicts then return document
+                if skipConflicts then return document
                 throw new PatchConflictError("Source path '#{@from.path}' not found")
             [toReference, toAccessor] = @path.getReference(document, true)
             unless toAccessor?
