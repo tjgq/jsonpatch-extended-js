@@ -5,10 +5,8 @@
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   (function(root, factory) {
-    var _;
     if (typeof exports !== 'undefined') {
-      _ = require('lodash');
-      return factory(root, _);
+      return factory(root, require('lodash'));
     } else {
       return root.jsonpatch = factory(root, window._);
     }
@@ -237,7 +235,7 @@
           if (skipConflicts) {
             return document;
           }
-          throw new PatchConflictError("Source path not found");
+          throw new PatchConflictError("Source path '" + this.path.path + "' not found");
         }
         value = this.patch.value;
         return this.realApply(document, reference, accessor, value);
@@ -261,7 +259,7 @@
           if (skipConflicts) {
             return document;
           }
-          throw new PatchConflictError("Target path not found");
+          throw new PatchConflictError("Target path '" + this.path.path + "' not found");
         }
         value = this.patch.value;
         return this.realApply(document, reference, accessor, value);
@@ -306,14 +304,14 @@
           if (skipOnConflicts) {
             return document;
           }
-          throw new PatchConflictError("Source path not found");
+          throw new PatchConflictError("Source path '" + this.from.path + "' not found");
         }
         _ref4 = this.path.getReference(document, true), toReference = _ref4[0], toAccessor = _ref4[1];
         if (toAccessor == null) {
           if (skipConflicts) {
             return document;
           }
-          throw new PatchConflictError("Target path not found");
+          throw new PatchConflictError("Target path '" + this.path.path + "' not found");
         }
         return this.realApply(document, fromReference, fromAccessor, toReference, toAccessor);
       };
@@ -427,7 +425,7 @@
           if (skipConflicts) {
             return document;
           }
-          throw new PatchConflictError('Test failed');
+          throw new PatchConflictError("Test on path '" + this.path.path + "' failed");
         }
         return document;
       };

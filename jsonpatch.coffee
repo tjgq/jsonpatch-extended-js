@@ -188,7 +188,7 @@
             [reference, accessor] = @path.getReference(document, false)
             unless accessor?
                 if skipConflicts then return document
-                throw new PatchConflictError("Source path not found")
+                throw new PatchConflictError("Source path '#{@path.path}' not found")
             value = @patch.value
             return @realApply(document, reference, accessor, value)
 
@@ -198,7 +198,7 @@
             [reference, accessor] = @path.getReference(document, true)
             unless accessor?
                 if skipConflicts then return document
-                throw new PatchConflictError("Target path not found")
+                throw new PatchConflictError("Target path '#{@path.path}' not found")
             value = @patch.value
             return @realApply(document, reference, accessor, value)
 
@@ -226,11 +226,11 @@
             [fromReference, fromAccessor] = @from.getReference(document, false)
             unless fromAccessor?
                 if skipOnConflicts then return document
-                throw new PatchConflictError("Source path not found")
+                throw new PatchConflictError("Source path '#{@from.path}' not found")
             [toReference, toAccessor] = @path.getReference(document, true)
             unless toAccessor?
                 if skipConflicts then return document
-                throw new PatchConflictError("Target path not found")
+                throw new PatchConflictError("Target path '#{@path.path}' not found")
             return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
 
 
@@ -285,7 +285,7 @@
                 result = isEqual(reference[accessor], value)
             if not result
                 if skipConflicts then return document
-                throw new PatchConflictError('Test failed')
+                throw new PatchConflictError("Test on path '#{@path.path}' failed")
             return document
 
 
