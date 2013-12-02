@@ -9,10 +9,10 @@ testDir = path.join(__dirname, 'suite')
 testSuite = _(fs.readdirSync(testDir)).map((f) -> require("./suite/#{f}")).reduce(_.merge)
 
 
-runTest = (test, skipConflicts) ->
+runTest = (test, lax) ->
 
     patch = if _.isArray(test.patch) then test.patch else [test.patch]
-    fn = -> jsonpatch.apply(test.document, patch, skipConflicts)
+    fn = -> jsonpatch.apply(test.document, patch, lax)
 
     if test.result.prototype instanceof Error
         expect(fn).to.throw(test.exception)

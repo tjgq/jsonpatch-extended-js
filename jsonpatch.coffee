@@ -178,26 +178,26 @@
 
         validate: (patch) ->
 
-        apply: (document, skipConflicts=true) ->
+        apply: (document, lax=true) ->
             # Apply the patch to a deep copy of the original document.
-            @applyInPlace(cloneDeep(document), skipConflicts)
+            @applyInPlace(cloneDeep(document), lax)
 
 
     class SourceRefPatch extends JSONPatch
-        applyInPlace: (document, skipConflicts) ->
+        applyInPlace: (document, lax) ->
             [reference, accessor] = @path.getReference(document, false)
             unless accessor?
-                if skipConflicts then return document
+                if lax then return document
                 throw new PatchConflictError("Source path '#{@path.path}' not found")
             value = @patch.value
             return @realApply(document, reference, accessor, value)
 
 
     class TargetRefPatch extends JSONPatch
-        applyInPlace: (document, skipConflicts) ->
+        applyInPlace: (document, lax) ->
             [reference, accessor] = @path.getReference(document, true)
             unless accessor?
-                if skipConflicts then return document
+                if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
             value = @patch.value
             return @realApply(document, reference, accessor, value)
@@ -222,14 +222,14 @@
                     # From is a proper prefix of path
                     throw new InvalidPatchError("Cannot move or copy into ancestor")
 
-        applyInPlace: (document, skipConflicts) ->
+        applyInPlace: (document, lax) ->
             [fromReference, fromAccessor] = @from.getReference(document, false)
             unless fromAccessor?
-                if skipConflicts then return document
+                if lax then return document
                 throw new PatchConflictError("Source path '#{@from.path}' not found")
             [toReference, toAccessor] = @path.getReference(document, true)
             unless toAccessor?
-                if skipConflicts then return document
+                if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
             return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
 
@@ -284,7 +284,7 @@
             else
                 result = isEqual(reference[accessor], value)
             if not result
-                if skipConflicts then return document
+                if lax then return document
                 throw new PatchConflictError("Test on path '#{@path.path}' failed")
             return document
 
@@ -348,20 +348,20 @@
                 throw new InvalidPatchError('Invalid operation')
             ops.push new klass(p)
 
-        return (document, skipConflicts=true) ->
+        return (document, lax=true) ->
             # Since we are applying multiple patches in succession,
             # we only need to clone the original document and apply
             # the patches in place.
             result = cloneDeep(document)
             for op in ops
-                result = op.applyInPlace(document, skipConflicts)
+                result = op.applyInPlace(document, lax)
             return result
 
 
     # Applies a patch to a document.
-    # If skipConflicts, conflicting patches are silently ignored.
-    apply = (document, patch, skipConflicts=true) ->
-        compile(patch)(document, skipConflicts)
+    # If lax, conflicting patches are silently ignored.
+    apply = (document, patch, lax=true) ->
+        compile(patch)(document, lax)
 
 
     # Export to root
