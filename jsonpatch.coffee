@@ -264,9 +264,15 @@
             return document
 
 
-    class ReplacePatch extends SourceRefPatch
+    class ReplacePatch extends JSONPatch
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
+
+        applyInPlace: (document, lax) ->
+            if lax
+                TargetRefPatch.prototype.applyInPlace.call(@, document, lax)
+            else
+                SourceRefPatch.prototype.applyInPlace.call(@, document, lax)
 
         realApply: (document, reference, accessor, value) ->
             if not reference?
