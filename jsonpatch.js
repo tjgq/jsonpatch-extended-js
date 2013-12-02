@@ -28,7 +28,7 @@
     };
     listKeys = _.keys;
     cloneDeep = _.cloneDeep;
-    coerceForArray = function(reference, accessor, modify) {
+    coerceForArray = function(reference, accessor, modify, adjust) {
       switch (false) {
         case accessor !== '-':
           accessor = reference.length;
@@ -38,6 +38,9 @@
           break;
         default:
           return null;
+      }
+      if (modify && adjust) {
+        accessor = Math.min(accessor, reference.length);
       }
       if (accessor < reference.length + (modify ? 1 : 0)) {
         return accessor;
@@ -50,10 +53,10 @@
       }
       return null;
     };
-    coerce = function(reference, accessor, modify) {
+    coerce = function(reference, accessor, modify, adjust) {
       switch (false) {
         case !isArray(reference):
-          return coerceForArray(reference, accessor, modify);
+          return coerceForArray(reference, accessor, modify, adjust);
         case !isObject(reference):
           return coerceForObject(reference, accessor, modify);
         default:
@@ -138,14 +141,14 @@
         return step.replace('~2', '*').replace('~1', '/').replace('~0', '~');
       };
 
-      JSONPointer.prototype.getReference = function(object, modify) {
+      JSONPointer.prototype.getReference = function(object, modify, lax) {
         if (!this.steps.length) {
           return [null, object];
         }
-        return this.findReference(object, 0, modify);
+        return this.findReference(object, 0, modify, lax);
       };
 
-      JSONPointer.prototype.findReference = function(object, level, modify) {
+      JSONPointer.prototype.findReference = function(object, level, modify, lax) {
         var acc, accessors, isLast, matchLookahead, ref, step, _i, _len, _ref,
           _this = this;
         matchLookahead = function(object) {
@@ -173,7 +176,7 @@
             }
           })();
         } else {
-          acc = coerce(object, step, modify && isLast);
+          acc = coerce(object, step, modify && isLast, lax);
           accessors = acc != null ? [acc] : [];
         }
         for (_i = 0, _len = accessors.length; _i < _len; _i++) {
@@ -184,7 +187,7 @@
           if (isLast) {
             return [object, acc];
           }
-          _ref = this.findReference(object[acc], level + 1, modify), ref = _ref[0], acc = _ref[1];
+          _ref = this.findReference(object[acc], level + 1, modify, lax), ref = _ref[0], acc = _ref[1];
           if (acc != null) {
             return [ref, acc];
           }
@@ -210,11 +213,11 @@
 
       JSONPatch.prototype.validate = function(patch) {};
 
-      JSONPatch.prototype.apply = function(document, skipConflicts) {
-        if (skipConflicts == null) {
-          skipConflicts = true;
+      JSONPatch.prototype.apply = function(document, lax) {
+        if (lax == null) {
+          lax = true;
         }
-        return this.applyInPlace(cloneDeep(document), skipConflicts);
+        return this.applyInPlace(cloneDeep(document), lax);
       };
 
       return JSONPatch;
@@ -228,17 +231,17 @@
         return _ref;
       }
 
-      SourceRefPatch.prototype.applyInPlace = function(document, skipConflicts) {
+      SourceRefPatch.prototype.applyInPlace = function(document, lax) {
         var accessor, reference, value, _ref1;
         _ref1 = this.path.getReference(document, false), reference = _ref1[0], accessor = _ref1[1];
         if (accessor == null) {
-          if (skipConflicts) {
+          if (lax) {
             return document;
           }
           throw new PatchConflictError("Source path '" + this.path.path + "' not found");
         }
         value = this.patch.value;
-        return this.realApply(document, reference, accessor, value);
+        return this.realApply(document, reference, accessor, value, lax);
       };
 
       return SourceRefPatch;
@@ -252,17 +255,17 @@
         return _ref1;
       }
 
-      TargetRefPatch.prototype.applyInPlace = function(document, skipConflicts) {
+      TargetRefPatch.prototype.applyInPlace = function(document, lax) {
         var accessor, reference, value, _ref2;
-        _ref2 = this.path.getReference(document, true), reference = _ref2[0], accessor = _ref2[1];
+        _ref2 = this.path.getReference(document, true, lax), reference = _ref2[0], accessor = _ref2[1];
         if (accessor == null) {
-          if (skipConflicts) {
+          if (lax) {
             return document;
           }
           throw new PatchConflictError("Target path '" + this.path.path + "' not found");
         }
         value = this.patch.value;
-        return this.realApply(document, reference, accessor, value);
+        return this.realApply(document, reference, accessor, value, lax);
       };
 
       return TargetRefPatch;
@@ -297,23 +300,23 @@
         }
       };
 
-      BothRefsPatch.prototype.applyInPlace = function(document, skipConflicts) {
+      BothRefsPatch.prototype.applyInPlace = function(document, lax) {
         var fromAccessor, fromReference, toAccessor, toReference, _ref3, _ref4;
         _ref3 = this.from.getReference(document, false), fromReference = _ref3[0], fromAccessor = _ref3[1];
         if (fromAccessor == null) {
-          if (skipConflicts) {
+          if (lax) {
             return document;
           }
           throw new PatchConflictError("Source path '" + this.from.path + "' not found");
         }
-        _ref4 = this.path.getReference(document, true), toReference = _ref4[0], toAccessor = _ref4[1];
+        _ref4 = this.path.getReference(document, true, lax), toReference = _ref4[0], toAccessor = _ref4[1];
         if (toAccessor == null) {
-          if (skipConflicts) {
+          if (lax) {
             return document;
           }
           throw new PatchConflictError("Target path '" + this.path.path + "' not found");
         }
-        return this.realApply(document, fromReference, fromAccessor, toReference, toAccessor);
+        return this.realApply(document, fromReference, fromAccessor, toReference, toAccessor, lax);
       };
 
       return BothRefsPatch;
@@ -333,7 +336,7 @@
         }
       };
 
-      AddPatch.prototype.realApply = function(document, reference, accessor, value) {
+      AddPatch.prototype.realApply = function(document, reference, accessor, value, lax) {
         if (reference == null) {
           document = value;
         } else if (isArray(reference)) {
@@ -355,7 +358,7 @@
         return _ref4;
       }
 
-      RemovePatch.prototype.realApply = function(document, reference, accessor, value) {
+      RemovePatch.prototype.realApply = function(document, reference, accessor, value, lax) {
         if (reference == null) {
           throw new InvalidPatchError("Can't remove root document");
         }
@@ -384,7 +387,15 @@
         }
       };
 
-      ReplacePatch.prototype.realApply = function(document, reference, accessor, value) {
+      ReplacePatch.prototype.applyInPlace = function(document, lax) {
+        if (lax) {
+          return TargetRefPatch.prototype.applyInPlace.call(this, document, lax);
+        } else {
+          return SourceRefPatch.prototype.applyInPlace.call(this, document, lax);
+        }
+      };
+
+      ReplacePatch.prototype.realApply = function(document, reference, accessor, value, lax) {
         if (reference == null) {
           document = value;
         } else {
@@ -399,7 +410,7 @@
 
       return ReplacePatch;
 
-    })(SourceRefPatch);
+    })(JSONPatch);
     TestPatch = (function(_super) {
       __extends(TestPatch, _super);
 
@@ -414,7 +425,7 @@
         }
       };
 
-      TestPatch.prototype.realApply = function(document, reference, accessor, value) {
+      TestPatch.prototype.realApply = function(document, reference, accessor, value, lax) {
         var result;
         if (reference == null) {
           result = isEqual(document, value);
@@ -422,7 +433,7 @@
           result = isEqual(reference[accessor], value);
         }
         if (!result) {
-          if (skipConflicts) {
+          if (lax) {
             return document;
           }
           throw new PatchConflictError("Test on path '" + this.path.path + "' failed");
@@ -447,7 +458,7 @@
         }
       };
 
-      MovePatch.prototype.realApply = function(document, fromReference, fromAccessor, toReference, toAccessor) {
+      MovePatch.prototype.realApply = function(document, fromReference, fromAccessor, toReference, toAccessor, lax) {
         var value;
         if (isArray(fromReference)) {
           value = fromReference.splice(fromAccessor, 1)[0];
@@ -482,7 +493,7 @@
         }
       };
 
-      CopyPatch.prototype.realApply = function(document, fromReference, fromAccessor, toReference, toAccessor) {
+      CopyPatch.prototype.realApply = function(document, fromReference, fromAccessor, toReference, toAccessor, lax) {
         var value;
         if (isArray(fromReference)) {
           value = fromReference.slice(fromAccessor, fromAccessor + 1)[0];
@@ -523,24 +534,24 @@
         }
         ops.push(new klass(p));
       }
-      return function(document, skipConflicts) {
+      return function(document, lax) {
         var op, result, _j, _len1;
-        if (skipConflicts == null) {
-          skipConflicts = true;
+        if (lax == null) {
+          lax = true;
         }
         result = cloneDeep(document);
         for (_j = 0, _len1 = ops.length; _j < _len1; _j++) {
           op = ops[_j];
-          result = op.applyInPlace(document, skipConflicts);
+          result = op.applyInPlace(document, lax);
         }
         return result;
       };
     };
-    apply = function(document, patch, skipConflicts) {
-      if (skipConflicts == null) {
-        skipConflicts = true;
+    apply = function(document, patch, lax) {
+      if (lax == null) {
+        lax = true;
       }
-      return compile(patch)(document, skipConflicts);
+      return compile(patch)(document, lax);
     };
     root.apply = apply;
     root.compile = compile;
