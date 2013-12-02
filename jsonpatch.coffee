@@ -194,7 +194,7 @@
             unless accessor?
                 if lax then return document
                 throw new PatchConflictError("Source path '#{@path.path}' not found")
-            value = @patch.value
+            value = cloneDeep(@patch.value)
             return @realApply(document, reference, accessor, value, lax)
 
 
@@ -204,7 +204,7 @@
             unless accessor?
                 if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
-            value = @patch.value
+            value = cloneDeep(@patch.value)
             return @realApply(document, reference, accessor, value, lax)
 
 

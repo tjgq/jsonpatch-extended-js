@@ -240,7 +240,7 @@
           }
           throw new PatchConflictError("Source path '" + this.path.path + "' not found");
         }
-        value = this.patch.value;
+        value = cloneDeep(this.patch.value);
         return this.realApply(document, reference, accessor, value, lax);
       };
 
@@ -264,7 +264,7 @@
           }
           throw new PatchConflictError("Target path '" + this.path.path + "' not found");
         }
-        value = this.patch.value;
+        value = cloneDeep(this.patch.value);
         return this.realApply(document, reference, accessor, value, lax);
       };
 
