@@ -9,10 +9,10 @@ testDir = path.join(__dirname, 'suite')
 testSuite = _(fs.readdirSync(testDir)).map((f) -> require("./suite/#{f}")).reduce(_.merge)
 
 
-runTest = (test, lax) ->
+runTest = (test) ->
 
     patch = if _.isArray(test.patch) then test.patch else [test.patch]
-    fn = -> jsonpatch.apply(test.document, patch, lax)
+    fn = -> jsonpatch.apply(test.document, patch, test.lax || false)
 
     if test.result.prototype instanceof Error
         expect(fn).to.throw(test.result)
@@ -26,4 +26,4 @@ _(testSuite).each (feature, featureName) ->
         _(feature).each (test, testName) ->
             $it = if test.only? then it.only else it
             $it testName, ->
-                runTest(test, false)
+                runTest(test)
