@@ -15,7 +15,7 @@ runTest = (test, lax) ->
     fn = -> jsonpatch.apply(test.document, patch, lax)
 
     if test.result.prototype instanceof Error
-        expect(fn).to.throw(test.exception)
+        expect(fn).to.throw(test.result)
     else
         expect(fn()).to.deep.equal(test.result)
 
