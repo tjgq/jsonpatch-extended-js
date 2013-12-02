@@ -24,7 +24,7 @@
     listKeys = _.keys
     cloneDeep = _.cloneDeep
 
-    coerceForArray = (reference, accessor, modify) ->
+    coerceForArray = (reference, accessor, modify, adjust) ->
         switch
             when accessor is '-'
                 accessor = reference.length
@@ -32,6 +32,8 @@
                 accessor = parseInt(accessor, 10)
             else
                 return null
+        if modify and adjust
+            accessor = Math.min(accessor, reference.length)
         if accessor < reference.length + (if modify then 1 else 0)
             return accessor
         return null
@@ -41,13 +43,14 @@
             return accessor
         return null
 
-    # Coerce an accessor relative to the reference object type
-    # and whether modifications are allowed.
+    # Coerce an accessor relative to the reference object type,
+    # whether modifications are allowed, and whether out-of-bounds
+    # array indices should be adjusted down to the array length.
     # Returns null if the reference is invalid.
-    coerce = (reference, accessor, modify) ->
+    coerce = (reference, accessor, modify, adjust) ->
         switch
             when isArray(reference)
-                return coerceForArray(reference, accessor, modify)
+                return coerceForArray(reference, accessor, modify, adjust)
             when isObject(reference)
                 return coerceForObject(reference, accessor, modify)
             else
@@ -112,14 +115,16 @@
         # Return the object referenced by the pointer and its parent object.
         # Modify determines whether the reference is a modification target,
         # in which case the last component may not yet exist.
+        # If modify and lax are both set, adjust out-of-bounds array indices
+        # to the last position.
         # If the referenced object is the root, return a null parent.
         # If the pointed to object is not found, return a null object.
-        getReference: (object, modify) ->
+        getReference: (object, modify, lax) ->
             return [null, object] unless @steps.length # root doc
-            return @findReference(object, 0, modify)
+            return @findReference(object, 0, modify, lax)
 
         # Find a reference, beginning at the specified level.
-        findReference: (object, level, modify) =>
+        findReference: (object, level, modify, lax) =>
 
             matchLookahead = (object) =>
                 return true unless @lookaheads[level]
@@ -141,7 +146,7 @@
             else
                 # Consider only the specified array position or object property,
                 # as long as it exists or is a modification target.
-                acc = coerce(object, step, modify and isLast)
+                acc = coerce(object, step, modify and isLast, lax)
                 accessors =  if acc? then [acc] else []
 
             # Go through each search possibility.
@@ -151,7 +156,7 @@
                 # If this is the last step, don't go any deeper.
                 return [object, acc] if isLast
                 # Search one level deeper.
-                [ref, acc] = @findReference(object[acc], level+1, modify)
+                [ref, acc] = @findReference(object[acc], level+1, modify, lax)
                 # Return the first match.
                 return [ref, acc] if acc?
 
@@ -195,7 +200,7 @@
 
     class TargetRefPatch extends JSONPatch
         applyInPlace: (document, lax) ->
-            [reference, accessor] = @path.getReference(document, true)
+            [reference, accessor] = @path.getReference(document, true, lax)
             unless accessor?
                 if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
@@ -227,7 +232,7 @@
             unless fromAccessor?
                 if lax then return document
                 throw new PatchConflictError("Source path '#{@from.path}' not found")
-            [toReference, toAccessor] = @path.getReference(document, true)
+            [toReference, toAccessor] = @path.getReference(document, true, lax)
             unless toAccessor?
                 if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
