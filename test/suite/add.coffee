@@ -19,6 +19,15 @@ module.exports =
                 value: 'spam'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if target path has nonexisting component':
+            document: {foo: 1}
+            patch:
+                op: 'add'
+                path: '/bar/baz'
+                value: 'spam'
+            lax: true
+            result: {foo: 1}
+
         'should fail if target path indexes a non-object':
             document: {foo: 1}
             patch:
@@ -99,6 +108,15 @@ module.exports =
                 value: 'bacon'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should add at end of array if position out of bounds':
+            document: {foo: 1, bar: ['spam', 'eggs']}
+            patch:
+                op: 'add'
+                path: '/bar/3'
+                value: 'bacon'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
+
         'should fail if array position is not a number':
             document: {foo: 1, bar: ['spam', 'eggs']}
             patch:
@@ -106,6 +124,15 @@ module.exports =
                 path: '/bar/baz'
                 value: 'bacon'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if array position is not a number':
+            document: {foo: 1, bar: ['spam', 'eggs']}
+            patch:
+                op: 'add'
+                path: '/bar/baz'
+                value: 'bacon'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'eggs']}
 
         'should add into nonexisting object key':
             document: {foo: 1, bar: {quux: 'eggs'}}

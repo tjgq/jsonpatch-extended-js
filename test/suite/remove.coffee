@@ -18,6 +18,14 @@ module.exports =
                 path: '/bar/baz'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if target path has nonexisting component':
+            document: {foo: 1}
+            patch:
+                op: 'remove'
+                path: '/bar/baz'
+            lax: true
+            result: {foo: 1}
+
         'should fail if target path indexes a non-object':
             document: {foo: 1}
             patch:
@@ -25,6 +33,15 @@ module.exports =
                 path: '/foo/bar'
                 value: 'spam'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if target path indexes a non-object':
+            document: {foo: 1}
+            patch:
+                op: 'remove'
+                path: '/foo/bar'
+                value: 'spam'
+            lax: true
+            result: {foo: 1}
 
         'should remove empty key at root':
             document: {foo: 1, '': 'spam'}
@@ -54,12 +71,28 @@ module.exports =
                 path: '/bar/3'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if target is nonexisting array position':
+            document: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
+            patch:
+                op: 'remove'
+                path: '/bar/3'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
+
         'should fail if target is position past end of array':
             document: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
             patch:
                 op: 'remove'
                 path: '/bar/-'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if target is position past end of array':
+            document: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
+            patch:
+                op: 'remove'
+                path: '/bar/-'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'eggs', 'bacon']}
 
         'should remove existing object key':
             document: {foo: 1, bar: {baz: 'spam', quux: 'eggs'}}
@@ -74,6 +107,14 @@ module.exports =
                 op: 'remove'
                 path: '/bar/quux'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if target object key does not exist':
+            document: {foo: 1, bar: {baz: 'spam'}}
+            patch:
+                op: 'remove'
+                path: '/bar/quux'
+            lax: true
+            result: {foo: 1, bar: {baz: 'spam'}}
 
         'should remove key from object inside array':
             document: {foo: 1, bar: [{baz: 'spam'}, {quux: 'eggs', xyzzy: 'bacon'}]}

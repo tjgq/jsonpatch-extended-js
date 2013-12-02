@@ -20,6 +20,15 @@ module.exports =
                 value: 'spam'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should pass test if wildcard component indexes a non-object':
+            document: {foo: 1, bar: 2}
+            patch:
+                op: 'test'
+                path: '/bar/*/quux'
+                value: 'spam'
+            lax: true
+            result: {foo: 1, bar: 2}
+
         'should pass test on path with matching wildcard on object key':
             document: {foo: 1, bar: {baz: 'spam'}}
             patch:
@@ -36,6 +45,15 @@ module.exports =
                 value: 'spam'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should pass test on path with non-matching wildcard on object key':
+            document: {foo: 1, bar: {baz: 'spam'}}
+            patch:
+                op: 'test'
+                path: '/*/quux'
+                value: 'spam'
+            lax: true
+            result: {foo: 1, bar: {baz: 'spam'}}
+
         'should pass test on path with matching wildcard on array position':
             document: {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]}
             patch:
@@ -51,3 +69,12 @@ module.exports =
                 path: '/bar/*/waldo'
                 value: 'spam'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should pass test on path with non-matching wildcard on array position':
+            document: {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]}
+            patch:
+                op: 'test'
+                path: '/bar/*/waldo'
+                value: 'spam'
+            lax: true
+            result: {foo: 1, bar: [{baz: 'spam', quux: 'eggs'}]}

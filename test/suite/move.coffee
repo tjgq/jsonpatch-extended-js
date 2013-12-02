@@ -39,6 +39,15 @@ module.exports =
                 path: '/bar/baz'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if target path has nonexisting component':
+            document: {foo: 1}
+            patch:
+                op: 'move'
+                from: '/foo'
+                path: '/bar/baz'
+            lax: true
+            result: {foo: 1}
+
         'should fail if target path indexes a non-object':
             document: {foo: 1, bar: 2}
             patch:
@@ -46,6 +55,15 @@ module.exports =
                 from: '/foo'
                 path: '/bar/baz'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if target path indexes a non-object':
+            document: {foo: 1, bar: 2}
+            patch:
+                op: 'move'
+                from: '/foo'
+                path: '/bar/baz'
+            lax: true
+            result: {foo: 1, bar: 2}
 
         'should move into root':
             document: {foo: 1, bar: {baz: 'spam'}}
@@ -119,6 +137,15 @@ module.exports =
                 path: '/bar/3'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should move into end of array if target position out of bounds':
+            document: {foo: 1, bar: ['spam', 'bacon'], quux: 'eggs'}
+            patch:
+                op: 'move'
+                from: '/quux'
+                path: '/bar/3'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'bacon', 'eggs']}
+
         'should move into nonexisting object key':
             document: {foo: 1, bar: {quux: 'eggs'}, xyzzy: 'spam'}
             patch:
@@ -153,6 +180,15 @@ module.exports =
                 path: '/bar/baz'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if source path has nonexisting component':
+            document: {foo: 1, bar: {baz: 'spam'}}
+            patch:
+                op: 'move'
+                from: '/xyzzy/waldo'
+                path: '/bar/baz'
+            lax: true
+            result: {foo: 1, bar: {baz: 'spam'}}
+
         'should fail if source path indexes a non-object':
             document: {foo: 1, bar: {baz: 'spam'}, xyzzy: 2}
             patch:
@@ -160,6 +196,15 @@ module.exports =
                 from: '/xyzzy/waldo'
                 path: '/bar/baz'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if source path indexes a non-object':
+            document: {foo: 1, bar: {baz: 'spam'}, xyzzy: 2}
+            patch:
+                op: 'move'
+                from: '/xyzzy/waldo'
+                path: '/bar/baz'
+            lax: true
+            result: {foo: 1, bar: {baz: 'spam'}, xyzzy: 2}
 
         'should fail if moving from root':
             document: {foo: 1, bar: {baz: 'spam'}}
@@ -193,6 +238,15 @@ module.exports =
                 path: '/waldo'
             result: jsonpatch.PatchConflictError
 
+        'in lax mode, should do nothing if source array position does not exist':
+            document: {foo: 1, bar: ['spam', 'bacon']}
+            patch:
+                op: 'move'
+                from: '/bar/3'
+                path: '/waldo'
+            lax: true
+            result: {foo: 1, bar: ['spam', 'bacon']}
+
         'should move from array at existing position':
             document: {foo: 1, bar: ['spam', 'eggs']}
             patch:
@@ -208,6 +262,15 @@ module.exports =
                 from: '/bar/quux'
                 path: '/waldo'
             result: jsonpatch.PatchConflictError
+
+        'in lax mode, should do nothing if source object key does not exist':
+            document: {foo: 1, bar: {baz: 'spam'}}
+            patch:
+                op: 'move'
+                from: '/bar/quux'
+                path: '/waldo'
+            lax: true
+            result: {foo: 1, bar: {baz: 'spam'}}
 
         'should move from existing object key':
             document: {foo: 1, bar: {baz: 'spam', quux: 'eggs'}}
