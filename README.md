@@ -11,12 +11,16 @@ References:
 * Extensions (to be documented):
     * wildcard references
     * attribute lookahead
+    * lax mode
 
 ## Methods
 
-**`jsonpatch.apply(document, patch, skipConflicts=true)`**
+**`jsonpatch.apply(document, patch, lax=true)`**
 
-Applies a patch set to the document. If skipConflicts is true, conflicting patches are silently ignored instead of aborting the operation.
+Applies a patch set to the document. The last parameter enables lax mode, in which the following modifications are made to the JSONPatch algorithm:
+* The add operation adjusts out-of-bounds array indices down to the array length.
+* The replace operation works even when the source location does not exist: for objects the new key is created, and for arrays the item is inserted at the end.
+* Any other conflicting patches are silently ignored instead of aborting the operation.
 
 **`jsonpatch.compile(patch)`**
 
