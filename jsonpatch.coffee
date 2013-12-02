@@ -195,7 +195,7 @@
                 if lax then return document
                 throw new PatchConflictError("Source path '#{@path.path}' not found")
             value = @patch.value
-            return @realApply(document, reference, accessor, value)
+            return @realApply(document, reference, accessor, value, lax)
 
 
     class TargetRefPatch extends JSONPatch
@@ -205,7 +205,7 @@
                 if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
             value = @patch.value
-            return @realApply(document, reference, accessor, value)
+            return @realApply(document, reference, accessor, value, lax)
 
 
     class BothRefsPatch extends JSONPatch
@@ -236,14 +236,14 @@
             unless toAccessor?
                 if lax then return document
                 throw new PatchConflictError("Target path '#{@path.path}' not found")
-            return @realApply(document, fromReference, fromAccessor, toReference, toAccessor)
+            return @realApply(document, fromReference, fromAccessor, toReference, toAccessor, lax)
 
 
     class AddPatch extends TargetRefPatch
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-        realApply: (document, reference, accessor, value) ->
+        realApply: (document, reference, accessor, value, lax) ->
             if not reference?
                 document = value
             else if isArray(reference)
@@ -254,7 +254,7 @@
 
 
     class RemovePatch extends SourceRefPatch
-        realApply: (document, reference, accessor, value) ->
+        realApply: (document, reference, accessor, value, lax) ->
             if not reference?
                 throw new InvalidPatchError("Can't remove root document")
             if isArray(reference)
@@ -274,7 +274,7 @@
             else
                 SourceRefPatch.prototype.applyInPlace.call(@, document, lax)
 
-        realApply: (document, reference, accessor, value) ->
+        realApply: (document, reference, accessor, value, lax) ->
             if not reference?
                 document = value
             else
@@ -289,7 +289,7 @@
         validate: (patch) ->
             if 'value' not of patch then throw new InvalidPatchError('Missing value')
 
-        realApply: (document, reference, accessor, value) ->
+        realApply: (document, reference, accessor, value, lax) ->
             if not reference?
                 result = isEqual(document, value)
             else
@@ -304,7 +304,7 @@
         validate: (patch) ->
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
-        realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
+        realApply: (document, fromReference, fromAccessor, toReference, toAccessor, lax) ->
             if isArray(fromReference)
                 value = fromReference.splice(fromAccessor, 1)[0]
             else
@@ -323,7 +323,7 @@
         validate: (patch) ->
             if 'from' not of patch then throw new InvalidPatchError('Missing from')
 
-        realApply: (document, fromReference, fromAccessor, toReference, toAccessor) ->
+        realApply: (document, fromReference, fromAccessor, toReference, toAccessor, lax) ->
             if isArray(fromReference)
                 value = fromReference.slice(fromAccessor, fromAccessor + 1)[0]
             else
